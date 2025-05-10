@@ -3,7 +3,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
-  //login
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -22,38 +21,24 @@ class _LoginPageState extends State<LoginPage> {
     super.didChangeDependencies();
     _navigator = Navigator.of(context);
     _scaffoldMessenger = ScaffoldMessenger.of(context);
-    print('LoginPage dependencies initialized');
   }
 
   Future<void> _signInWithEmailAndPassword() async {
-    print('Login initiated');
     if (!_formKey.currentState!.validate()) {
-      print('Form validation failed');
       return;
     }
 
     setState(() => _isLoading = true);
-    print('Loading state set to true');
 
     try {
       final email = _emailController.text.trim();
       final password = _passwordController.text.trim();
-
-      print('Attempting login for: $email');
-      print('Password length: ${password.length} characters');
 
       try {
         final userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
           email: email,
           password: password,
         );
-
-        print('Firebase auth completed');
-        if (userCredential.user != null) {
-          print('Login successful for user: ${userCredential.user!.uid}');
-        } else {
-          print('WARNING: User credential exists but user is null');
-        }
 
         // Always navigate to home if we get here (works around PigeonUserDetails error)
         if (mounted) {
@@ -63,22 +48,14 @@ class _LoginPageState extends State<LoginPage> {
           await Future.delayed(const Duration(milliseconds: 500));
           _navigator.pushReplacementNamed('/home');
         }
-      } on FirebaseAuthException catch (e, stackTrace) {
-        print('FIREBASE AUTH ERROR: ${e.code}');
-        print('Error message: ${e.message}');
-        print('Stack trace: $stackTrace');
-
+      } on FirebaseAuthException catch (e) {
         if (mounted) {
           _showAuthError(e.code);
         }
       }
-    } catch (e, stackTrace) {
-      print('UNEXPECTED ERROR: $e');
-      print('Stack trace: $stackTrace');
-
+    } catch (e) {
       if (e.toString().contains('PigeonUserDetails')) {
         // Special handling for the known decoding error
-        print('Proceeding with navigation despite PigeonUserDetails error');
         if (mounted) {
           _scaffoldMessenger.showSnackBar(
             const SnackBar(content: Text('Login successful! Redirecting...')),
@@ -93,15 +70,12 @@ class _LoginPageState extends State<LoginPage> {
       }
     } finally {
       if (mounted) {
-        print('Resetting loading state');
         setState(() => _isLoading = false);
       }
     }
   }
 
   void _showAuthError(String errorCode) {
-    print('Showing auth error: $errorCode');
-
     final errorMessage = switch (errorCode) {
       'user-not-found' || 'wrong-password' => 'Invalid email or password',
       'invalid-email' => 'Invalid email format',
@@ -123,7 +97,6 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   void dispose() {
-    print('LoginPage disposed');
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -131,7 +104,6 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    print('Building LoginPage UI');
     return Scaffold(
       appBar: AppBar(title: const Text('Login')),
       body: Padding(
