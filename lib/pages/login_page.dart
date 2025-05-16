@@ -39,8 +39,9 @@ class _LoginPageState extends State<LoginPage> {
       );
 
       if (mounted) {
-        _scaffoldMessenger.showSnackBar(
-          const SnackBar(content: Text('Login successful! Redirecting...')),
+        _showSnackBar(
+          message: 'Login successful! Redirecting...',
+          color: Colors.green,
         );
         await Future.delayed(const Duration(milliseconds: 500));
         _navigator.pushReplacementNamed('/home');
@@ -50,15 +51,17 @@ class _LoginPageState extends State<LoginPage> {
     } catch (e) {
       if (e.toString().contains('PigeonUserDetails')) {
         if (mounted) {
-          _scaffoldMessenger.showSnackBar(
-            const SnackBar(content: Text('Login successful! Redirecting...')),
+          _showSnackBar(
+            message: 'Login successful! Redirecting...',
+            color: Colors.green,
           );
           await Future.delayed(const Duration(milliseconds: 500));
           _navigator.pushReplacementNamed('/home');
         }
       } else if (mounted) {
-        _scaffoldMessenger.showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
+        _showSnackBar(
+          message: 'Error: ${e.toString()}',
+          color: Colors.red,
         );
       }
     } finally {
@@ -77,11 +80,30 @@ class _LoginPageState extends State<LoginPage> {
       _ => 'Authentication failed (code: $errorCode)',
     };
 
+    _showSnackBar(
+      message: errorMessage,
+      color: const Color(0xFF1DA1F2), // Twitter-like blue
+    );
+  }
+
+  void _showSnackBar({required String message, required Color color}) {
     _scaffoldMessenger.showSnackBar(
       SnackBar(
-        content: Text(errorMessage),
+        content: Text(
+          message,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+          ),
+        ),
+        backgroundColor: color,
         duration: const Duration(seconds: 3),
         behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+        margin: const EdgeInsets.all(16),
+        elevation: 4,
       ),
     );
   }
@@ -159,8 +181,7 @@ class _LoginPageState extends State<LoginPage> {
                               style: const TextStyle(color: Colors.white),
                               validator: (value) {
                                 if (value == null || value.isEmpty) return 'Please enter your email';
-                                if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                                  return 'Please enter a valid email';
+                                if (!RegExp(r'^[\w-]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {                                  return 'Please enter a valid email';
                                 }
                                 return null;
                               },

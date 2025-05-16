@@ -3,7 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'services/firebase_options.dart';
 import 'pages/login_page.dart';
 import 'pages/home_page.dart';
-
+//  
 void debugLog(String message, {bool isError = false}) {
   assert(() {
     if (isError) {

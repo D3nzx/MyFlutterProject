@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -17,10 +16,33 @@ class _HomePageState extends State<HomePage> {
       Navigator.of(context).pushReplacementNamed('/login');
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error signing out: ${e.toString()}')),
+      _showSnackBar(
+        message: 'Error signing out: ${e.toString()}',
+        color: Colors.red,
       );
     }
+  }
+
+  void _showSnackBar({required String message, required Color color}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+          ),
+        ),
+        backgroundColor: color,
+        duration: const Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+        margin: const EdgeInsets.all(16),
+        elevation: 4,
+      ),
+    );
   }
 
   @override
