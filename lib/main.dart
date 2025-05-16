@@ -3,20 +3,30 @@ import 'package:firebase_core/firebase_core.dart';
 import 'services/firebase_options.dart';
 import 'pages/login_page.dart';
 import 'pages/home_page.dart';
-//
+
+void debugLog(String message, {bool isError = false}) {
+  assert(() {
+    if (isError) {
+      debugPrint('❌ ERROR: $message');
+    } else {
+      debugPrint('ℹ️ INFO: $message');
+    }
+    return true;
+  }());
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
-    print('Initializing Firebase...');
+    debugLog('Initializing Firebase...');
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    print('Firebase initialized successfully');
+    debugLog('Firebase initialized successfully');
     runApp(const MyApp());
   } catch (e) {
-    print('FATAL ERROR: Failed to initialize Firebase: $e');
+    debugLog('Failed to initialize Firebase: $e', isError: true);
     runApp(
       MaterialApp(
         home: Scaffold(
@@ -64,7 +74,7 @@ class MyApp extends StatelessWidget {
         '/home': (context) => const HomePage(),
       },
       onUnknownRoute: (settings) {
-        print('Attempted to navigate to unknown route: ${settings.name}');
+        debugLog('Attempted to navigate to unknown route: ${settings.name}', isError: true);
         return MaterialPageRoute(builder: (context) => const LoginPage());
       },
     );

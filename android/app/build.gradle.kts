@@ -1,10 +1,10 @@
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+@Suppress("UnstableApiUsage") //para diko ma problema :)
 android {
     namespace = "com.example.finalproject"
     compileSdk = flutter.compileSdkVersion
@@ -19,7 +19,7 @@ android {
         jvmTarget = "17"
     }
     kotlin {
-        jvmToolchain(17) // Ensures consistent JDK version usage
+        jvmToolchain(17)
     }
 
     defaultConfig {
