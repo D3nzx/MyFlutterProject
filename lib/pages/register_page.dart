@@ -1,15 +1,15 @@
-import 'package:finalproject/pages/register_page.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'login_page.dart';
 
-class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+class RegisterPage extends StatefulWidget {
+  const RegisterPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  State<RegisterPage> createState() => _RegisterPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _RegisterPageState extends State<RegisterPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -25,27 +25,27 @@ class _LoginPageState extends State<LoginPage> {
     _scaffoldMessenger = ScaffoldMessenger.of(context);
   }
 
-  Future<void> _signInWithEmailAndPassword() async {
+  Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
-
     setState(() => _isLoading = true);
 
     try {
       final email = _emailController.text.trim();
       final password = _passwordController.text.trim();
 
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
+      await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
 
       if (mounted) {
         _showSnackBar(
-          message: 'Login successful! Redirecting...',
+          message: 'Account created! Redirecting to login...',
           color: Colors.green,
         );
-        await Future.delayed(const Duration(milliseconds: 500));
-        _navigator.pushReplacementNamed('/songList');
+        _emailController.clear();
+        _passwordController.clear();
+        _navigateWithFade(const LoginPage());
       }
     } on FirebaseAuthException catch (e) {
       if (mounted) _showAuthError(e.code);
@@ -53,11 +53,12 @@ class _LoginPageState extends State<LoginPage> {
       if (e.toString().contains('PigeonUserDetails')) {
         if (mounted) {
           _showSnackBar(
-            message: 'Login successful! Redirecting...',
+            message: 'Account created! Redirecting to login...',
             color: Colors.green,
           );
-          await Future.delayed(const Duration(milliseconds: 500));
-          _navigator.pushReplacementNamed('/songList');
+          _emailController.clear();
+          _passwordController.clear();
+          _navigateWithFade(const LoginPage());
         }
       } else if (mounted) {
         _showSnackBar(
@@ -72,18 +73,16 @@ class _LoginPageState extends State<LoginPage> {
 
   void _showAuthError(String errorCode) {
     final errorMessage = switch (errorCode) {
-      'user-not-found' || 'wrong-password' => 'Invalid email or password',
+      'email-already-in-use' => 'Email already in use',
       'invalid-email' => 'Invalid email format',
-      'user-disabled' => 'This account has been disabled',
-      'network-request-failed' => 'Network error, please check your connection',
-      'too-many-requests' => 'Too many attempts. Try again later.',
-      'operation-not-allowed' => 'Email/password sign-in is not enabled',
-      _ => 'Authentication failed (code: $errorCode)',
+      'weak-password' => 'Password should be at least 6 characters',
+      'operation-not-allowed' => 'Registration is not enabled',
+      _ => 'Registration failed (code: $errorCode)',
     };
 
     _showSnackBar(
       message: errorMessage,
-      color: const Color(0xFF1DA1F2), // Twitter-like blue
+      color: const Color(0xFF1DA1F2),
     );
   }
 
@@ -108,6 +107,7 @@ class _LoginPageState extends State<LoginPage> {
       ),
     );
   }
+
   void _navigateWithFade(Widget page) {
     _navigator.pushReplacement(
       PageRouteBuilder(
@@ -132,7 +132,7 @@ class _LoginPageState extends State<LoginPage> {
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
-          color: Color(0xFF15202B), // Dark theme background
+          color: Color(0xFF15202B),
         ),
         child: Center(
           child: SingleChildScrollView(
@@ -148,7 +148,7 @@ class _LoginPageState extends State<LoginPage> {
                       Icon(
                         Icons.people_alt_outlined,
                         size: 80,
-                        color: Color(0xFF1DA1F2), // Twitter-like blue
+                        color: Color(0xFF1DA1F2),
                       ),
                       SizedBox(height: 16),
                       Text(
@@ -163,9 +163,9 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 40),
 
-                  // Login Card
+                  // Register Card
                   Card(
-                    color: const Color(0xFF192734), // Dark card color
+                    color: const Color(0xFF192734),
                     elevation: 8,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
@@ -177,7 +177,7 @@ class _LoginPageState extends State<LoginPage> {
                         child: Column(
                           children: [
                             const Text(
-                              "Sign In",
+                              "Register",
                               style: TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.w300,
@@ -193,7 +193,8 @@ class _LoginPageState extends State<LoginPage> {
                               style: const TextStyle(color: Colors.white),
                               validator: (value) {
                                 if (value == null || value.isEmpty) return 'Please enter your email';
-                                if (!RegExp(r'^[\w-]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {                                  return 'Please enter a valid email';
+                                if (!RegExp(r'^[\w-]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                                  return 'Please enter a valid email';
                                 }
                                 return null;
                               },
@@ -266,15 +267,14 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                             const SizedBox(height: 24),
 
-
-                            // Login Button
+                            // Register Button
                             SizedBox(
                               width: double.infinity,
                               height: 50,
                               child: ElevatedButton(
-                                onPressed: _isLoading ? null : _signInWithEmailAndPassword,
+                                onPressed: _isLoading ? null : _register,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF1DA1F2), // Twitter-like blue
+                                  backgroundColor: const Color(0xFF1DA1F2),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(8),
                                   ),
@@ -290,7 +290,7 @@ class _LoginPageState extends State<LoginPage> {
                                   ),
                                 )
                                     : const Text(
-                                  "LOGIN",
+                                  "REGISTER",
                                   style: TextStyle(
                                     fontSize: 16,
                                     color: Colors.white,
@@ -302,9 +302,9 @@ class _LoginPageState extends State<LoginPage> {
                             TextButton(
                               onPressed: _isLoading
                                   ? null
-                                  : () => _navigateWithFade(const RegisterPage()),
+                                  : () => _navigateWithFade(const LoginPage()),
                               child: const Text(
-                                "Don't have an account? Register",
+                                "Already have an account? Login",
                                 style: TextStyle(
                                   color: Color(0xFF1DA1F2),
                                   fontSize: 14,
