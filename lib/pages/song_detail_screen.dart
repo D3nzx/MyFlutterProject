@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:audio_video_progress_bar/audio_video_progress_bar.dart';
 import '../services/supabase_service.dart';
+import '../services/audio_player_service.dart';
 
 class SongDetailScreen extends StatefulWidget {
   final int initialIndex;
@@ -32,7 +33,7 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
   void initState() {
     super.initState();
     _supabase = SupabaseService();
-    _audioPlayer = AudioPlayer();
+    _audioPlayer = AudioPlayerService().player;
     _currentIndex = widget.initialIndex;
     _initAudioPlayer();
   }
@@ -42,6 +43,7 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
       final currentSong = widget.songs[_currentIndex];
       final audioUrl = _supabase.getAudioUrl(currentSong['audio_path']);
 
+      // Set up player state listeners
       _audioPlayer.playerStateStream.listen((playerState) {
         final isPlaying = playerState.playing;
         final processingState = playerState.processingState;
@@ -61,12 +63,14 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
         setState(() => _position = position);
       });
 
-      _audioPlayer.setAudioSource(
-        AudioSource.uri(Uri.parse(audioUrl)),
-        initialIndex: _currentIndex,
-      );
-
-      await _audioPlayer.play();
+      // Only play if not already playing the correct song
+      final audioService = AudioPlayerService();
+      audioService.setSongs(widget.songs);
+      if (audioService.currentIndexNotifier.value != _currentIndex ||
+          audioService.player.audioSource == null) {
+        await audioService.playSongAt(_currentIndex, audioUrl);
+      }
+      // else: do nothing, keep playing current song
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -105,11 +109,7 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
       final currentSong = widget.songs[_currentIndex];
       final audioUrl = _supabase.getAudioUrl(currentSong['audio_path']);
 
-      await _audioPlayer.stop();
-      await _audioPlayer.setAudioSource(
-        AudioSource.uri(Uri.parse(audioUrl)),
-      );
-      await _audioPlayer.play();
+      await AudioPlayerService().playSongAt(_currentIndex, audioUrl);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -121,7 +121,7 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
 
   @override
   void dispose() {
-    _audioPlayer.dispose();
+    // Do not dispose the global player here!
     super.dispose();
   }
 
@@ -234,27 +234,27 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
                     IconButton(
                       icon: _isLoading || _isBuffering
                           ? const SizedBox(
-                        width: 40,
-                        height: 40,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 3,
-                          color: Colors.white,
-                        ),
-                      )
+                              width: 40,
+                              height: 40,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 3,
+                                color: Colors.white,
+                              ),
+                            )
                           : Icon(
-                        _isPlaying ? Icons.pause_circle_filled : Icons.play_circle_filled,
-                        size: 60,
-                      ),
+                              _isPlaying ? Icons.pause_circle_filled : Icons.play_circle_filled,
+                              size: 60,
+                            ),
                       color: Colors.white,
                       onPressed: (_isLoading || _isBuffering)
                           ? null
                           : () async {
-                        if (_isPlaying) {
-                          await _audioPlayer.pause();
-                        } else {
-                          await _audioPlayer.play();
-                        }
-                      },
+                              if (_isPlaying) {
+                                await _audioPlayer.pause();
+                              } else {
+                                await _audioPlayer.play();
+                              }
+                            },
                     ),
                     IconButton(
                       icon: const Icon(Icons.skip_next, size: 40),
