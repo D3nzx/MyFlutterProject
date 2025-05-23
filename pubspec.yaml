@@ -23,6 +23,16 @@ dev_dependencies:
   flutter_lints: ^5.0.0
   flutter_test:
     sdk: flutter
+  flutter_launcher_icons: ^0.13.1
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/images/Synapse Music Logo.png
+
+flutter_icons:
+  android: true
+  ios: false
+  image_path: "assets/images/Synapse Music Logo.png"
+  adaptive_icon_background: "#0D1117"  # Transparent background
+  adaptive_icon_foreground: "assets/images/Synapse Music Logo.png"

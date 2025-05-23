@@ -4,6 +4,7 @@ import 'package:just_audio/just_audio.dart';
 import 'package:audio_video_progress_bar/audio_video_progress_bar.dart';
 import '../services/supabase_service.dart';
 import '../services/audio_player_service.dart';
+import 'dart:async';
 
 class SongDetailScreen extends StatefulWidget {
   final int initialIndex;
@@ -22,6 +23,10 @@ class SongDetailScreen extends StatefulWidget {
 class _SongDetailScreenState extends State<SongDetailScreen> {
   late final SupabaseService _supabase;
   late final AudioPlayer _audioPlayer;
+  late final StreamSubscription<int?> _currentIndexSub;
+  StreamSubscription<PlayerState>? _playerStateSub;
+  StreamSubscription<Duration?>? _durationSub;
+  StreamSubscription<Duration>? _positionSub;
   late int _currentIndex;
   bool _isPlaying = false;
   bool _isLoading = true;
@@ -36,6 +41,33 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
     _audioPlayer = AudioPlayerService().player;
     _currentIndex = widget.initialIndex;
     _initAudioPlayer();
+
+    _currentIndexSub = _audioPlayer.currentIndexStream.listen((newIndex) {
+      if (newIndex != null && newIndex >= 0 && newIndex < widget.songs.length) {
+        setState(() {
+          _currentIndex = newIndex;
+        });
+      }
+    });
+
+    _playerStateSub = _audioPlayer.playerStateStream.listen((playerState) {
+      final isPlaying = playerState.playing;
+      final processingState = playerState.processingState;
+
+      setState(() {
+        _isPlaying = isPlaying;
+        _isBuffering = processingState == ProcessingState.buffering;
+        _isLoading = processingState == ProcessingState.loading;
+      });
+    });
+
+    _durationSub = _audioPlayer.durationStream.listen((duration) {
+      setState(() => _duration = duration);
+    });
+
+    _positionSub = _audioPlayer.positionStream.listen((position) {
+      setState(() => _position = position);
+    });
   }
 
   Future<void> _initAudioPlayer() async {
@@ -43,34 +75,12 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
       final currentSong = widget.songs[_currentIndex];
       final audioUrl = _supabase.getAudioUrl(currentSong['audio_path']);
 
-      // Set up player state listeners
-      _audioPlayer.playerStateStream.listen((playerState) {
-        final isPlaying = playerState.playing;
-        final processingState = playerState.processingState;
-
-        setState(() {
-          _isPlaying = isPlaying;
-          _isBuffering = processingState == ProcessingState.buffering;
-          _isLoading = processingState == ProcessingState.loading;
-        });
-      });
-
-      _audioPlayer.durationStream.listen((duration) {
-        setState(() => _duration = duration);
-      });
-
-      _audioPlayer.positionStream.listen((position) {
-        setState(() => _position = position);
-      });
-
-      // Only play if not already playing the correct song
       final audioService = AudioPlayerService();
       audioService.setSongs(widget.songs);
       if (audioService.currentIndexNotifier.value != _currentIndex ||
           audioService.player.audioSource == null) {
         await audioService.playSongAt(_currentIndex, audioUrl);
       }
-      // else: do nothing, keep playing current song
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -81,47 +91,19 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
   }
 
   Future<void> _playNextSong() async {
-    if (_currentIndex < widget.songs.length - 1) {
-      setState(() {
-        _currentIndex++;
-        _isLoading = true;
-      });
-      await _loadAndPlayCurrentSong();
-    }
+    await AudioPlayerService().playNext();
   }
 
   Future<void> _playPreviousSong() async {
-    if (_position != null && _position!.inSeconds > 3) {
-      await _audioPlayer.seek(Duration.zero);
-    } else if (_currentIndex > 0) {
-      setState(() {
-        _currentIndex--;
-        _isLoading = true;
-      });
-      await _loadAndPlayCurrentSong();
-    } else {
-      await _audioPlayer.seek(Duration.zero);
-    }
-  }
-
-  Future<void> _loadAndPlayCurrentSong() async {
-    try {
-      final currentSong = widget.songs[_currentIndex];
-      final audioUrl = _supabase.getAudioUrl(currentSong['audio_path']);
-
-      await AudioPlayerService().playSongAt(_currentIndex, audioUrl);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error changing song: ${e.toString()}')),
-        );
-      }
-    }
+    await AudioPlayerService().playPrevious();
   }
 
   @override
   void dispose() {
-    // Do not dispose the global player here!
+    _currentIndexSub.cancel();
+    _playerStateSub?.cancel();
+    _durationSub?.cancel();
+    _positionSub?.cancel();
     super.dispose();
   }
 
@@ -145,7 +127,6 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
           padding: const EdgeInsets.all(16.0),
           child: Column(
             children: [
-              // Album Art
               Expanded(
                 flex: 3,
                 child: Center(
@@ -174,8 +155,6 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
                 ),
               ),
               const SizedBox(height: 32),
-
-              // Song Info
               Expanded(
                 flex: 1,
                 child: Column(
@@ -203,14 +182,21 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
                   ],
                 ),
               ),
-
-              // Progress Bar
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: ProgressBar(
                   progress: _position ?? Duration.zero,
                   total: _duration ?? Duration.zero,
-                  onSeek: (duration) => _audioPlayer.seek(duration),
+                  onSeek: (duration) async {
+                    final audioService = AudioPlayerService();
+                    final isShuffle = audioService.playModeNotifier.value == 3;
+                    final total = _duration ?? Duration.zero;
+                    if (isShuffle && total.inMilliseconds > 0 && duration.inMilliseconds >= total.inMilliseconds - 500) {
+                      await audioService.playNext();
+                    } else {
+                      _audioPlayer.seek(duration);
+                    }
+                  },
                   progressBarColor: Colors.white,
                   baseBarColor: Colors.grey[600]!,
                   bufferedBarColor: Colors.grey[800]!,
@@ -219,49 +205,92 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
                 ),
               ),
               const SizedBox(height: 32),
-
-              // Controls
+              ValueListenableBuilder<int>(
+                valueListenable: AudioPlayerService().playModeNotifier,
+                builder: (context, playMode, _) {
+                  IconData icon;
+                  Color color = Colors.white;
+                  String tooltip;
+                  switch (playMode) {
+                    case 1:
+                      icon = Icons.repeat_one;
+                      color = Colors.blueAccent;
+                      tooltip = 'Repeat One: Repeat current song endlessly';
+                      break;
+                    case 2:
+                      icon = Icons.repeat;
+                      color = Colors.blueAccent;
+                      tooltip = 'Repeat All: Repeat playlist from start after last song';
+                      break;
+                    case 3:
+                      icon = Icons.shuffle;
+                      color = Colors.blueAccent;
+                      tooltip = 'Shuffle All: Play all songs in random order, repeat all';
+                      break;
+                    default:
+                      icon = Icons.repeat;
+                      color = Colors.white;
+                      tooltip = 'Off: Play songs in order, stop after last song';
+                  }
+                  return IconButton(
+                    icon: Icon(icon, color: color),
+                    tooltip: tooltip,
+                    onPressed: () {
+                      int nextMode = (playMode + 1) % 4;
+                      AudioPlayerService().setPlayMode(nextMode);
+                    },
+                  );
+                },
+              ),
+              const SizedBox(height: 8),
               Expanded(
                 flex: 1,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.skip_previous, size: 40),
-                      color: Colors.white,
-                      onPressed: _isLoading ? null : _playPreviousSong,
-                    ),
-                    IconButton(
-                      icon: _isLoading || _isBuffering
-                          ? const SizedBox(
-                              width: 40,
-                              height: 40,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 3,
-                                color: Colors.white,
-                              ),
-                            )
-                          : Icon(
-                              _isPlaying ? Icons.pause_circle_filled : Icons.play_circle_filled,
-                              size: 60,
-                            ),
-                      color: Colors.white,
-                      onPressed: (_isLoading || _isBuffering)
-                          ? null
-                          : () async {
-                              if (_isPlaying) {
-                                await _audioPlayer.pause();
-                              } else {
-                                await _audioPlayer.play();
-                              }
-                            },
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.skip_next, size: 40),
-                      color: Colors.white,
-                      onPressed: _isLoading ? null : _playNextSong,
-                    ),
-                  ],
+                child: StreamBuilder<PlayerState>(
+                  stream: _audioPlayer.playerStateStream,
+                  builder: (context, snapshot) {
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.skip_previous, size: 40),
+                          color: Colors.white,
+                          onPressed: _isLoading ? null : _playPreviousSong,
+                        ),
+                        IconButton(
+                          icon: _isLoading || _isBuffering
+                              ? const SizedBox(
+                                  width: 40,
+                                  height: 40,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 3,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : Icon(
+                                  _isPlaying
+                                      ? Icons.pause_circle_filled
+                                      : Icons.play_circle_filled,
+                                  size: 60,
+                                ),
+                          color: Colors.white,
+                          onPressed: (_isLoading || _isBuffering)
+                              ? null
+                              : () async {
+                                  if (_isPlaying) {
+                                    await _audioPlayer.pause();
+                                  } else {
+                                    await _audioPlayer.play();
+                                  }
+                                },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.skip_next, size: 40),
+                          color: Colors.white,
+                          onPressed: _isLoading ? null : _playNextSong,
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
             ],
@@ -271,3 +300,4 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
     );
   }
 }
+

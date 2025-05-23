@@ -19,14 +19,11 @@ void debugLog(String message, {bool isError = false}) {
 }
 
 Future<void> initializeApp() async {
-  // Initialize Firebase
   debugLog('Initializing Firebase...');
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
   debugLog('Firebase initialized successfully');
-
-  // Initialize Supabase through the service
   debugLog('Initializing Supabase...');
   await SupabaseService().initialize();
   debugLog('Supabase initialized successfully');
@@ -77,6 +74,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Music Player',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,

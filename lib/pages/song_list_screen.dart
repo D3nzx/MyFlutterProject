@@ -30,6 +30,9 @@ class _SongListScreenState extends State<SongListScreen> {
       _songs = widget.songs!;
       _filteredSongs = _songs;
       _isLoading = false;
+      for (var song in _songs) {
+        song['audioUrl'] = _supabase.getAudioUrl(song['audio_path']);
+      }
       AudioPlayerService().setSongs(_songs);
     } else {
       _loadSongs();
@@ -44,8 +47,15 @@ class _SongListScreenState extends State<SongListScreen> {
   }
 
   Future<void> _loadSongs() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
       final songs = await _supabase.getSongs();
+      for (var song in songs) {
+        song['audioUrl'] = _supabase.getAudioUrl(song['audio_path']);
+      }
       setState(() {
         _songs = songs;
         _filteredSongs = songs;
@@ -85,7 +95,7 @@ class _SongListScreenState extends State<SongListScreen> {
         elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout, color: Colors.white),
+            icon: const Icon(Icons.logout, color: Colors.red),
             tooltip: 'Logout',
             onPressed: () async {
               final shouldLogout = await showDialog<bool>(
@@ -97,7 +107,7 @@ class _SongListScreenState extends State<SongListScreen> {
                   ),
                   title: Row(
                     children: const [
-                      Icon(Icons.logout, color: Color(0xFF1DA1F2)),
+                      Icon(Icons.logout, color: Colors.red),
                       SizedBox(width: 8),
                       Text(
                         'Confirm Logout',
@@ -119,7 +129,7 @@ class _SongListScreenState extends State<SongListScreen> {
                     ),
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF1DA1F2),
+                        backgroundColor: Colors.red,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -134,7 +144,7 @@ class _SongListScreenState extends State<SongListScreen> {
                 ),
               );
               if (shouldLogout == true) {
-                await AudioPlayerService().stop(); // Stop all music
+                await AudioPlayerService().stop();
                 await FirebaseAuth.instance.signOut();
                 if (context.mounted) {
                   Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
@@ -182,7 +192,7 @@ class _SongListScreenState extends State<SongListScreen> {
                 final song = _filteredSongs.isEmpty && _searchController.text.isEmpty
                     ? _songs[index]
                     : _filteredSongs[index];
-                final originalIndex = _songs.indexOf(song);
+                final originalIndex = _songs.indexWhere((s) => s['audio_path'] == song['audio_path']);
                 return ListTile(
                   leading: ClipRRect(
                     borderRadius: BorderRadius.circular(4),
@@ -233,3 +243,4 @@ class _SongListScreenState extends State<SongListScreen> {
     );
   }
 }
+

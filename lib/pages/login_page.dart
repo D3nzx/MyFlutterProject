@@ -48,8 +48,17 @@ class _LoginPageState extends State<LoginPage> {
         _navigator.pushReplacementNamed('/songList');
       }
     } on FirebaseAuthException catch (e) {
+      assert(() {
+        debugPrint('FirebaseAuthException: ${e.code} - ${e.message}');
+        return true;
+      }());
       if (mounted) _showAuthError(e.code);
-    } catch (e) {
+    } catch (e, stack) {
+      assert(() {
+        debugPrint('Login error: $e');
+        debugPrint('$stack');
+        return true;
+      }());
       if (e.toString().contains('PigeonUserDetails')) {
         if (mounted) {
           _showSnackBar(
@@ -83,7 +92,7 @@ class _LoginPageState extends State<LoginPage> {
 
     _showSnackBar(
       message: errorMessage,
-      color: const Color(0xFF1DA1F2), // Twitter-like blue
+      color: const Color(0xFF1DA1F2),
     );
   }
 
@@ -108,6 +117,7 @@ class _LoginPageState extends State<LoginPage> {
       ),
     );
   }
+
   void _navigateWithFade(Widget page) {
     _navigator.pushReplacement(
       PageRouteBuilder(
@@ -132,7 +142,7 @@ class _LoginPageState extends State<LoginPage> {
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
-          color: Color(0xFF15202B), // Dark theme background
+          color: Color(0xFF0D1117),
         ),
         child: Center(
           child: SingleChildScrollView(
@@ -142,33 +152,40 @@ class _LoginPageState extends State<LoginPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // App logo and name
-                  const Column(
+                  Column(
                     children: [
-                      Icon(
-                        Icons.people_alt_outlined,
-                        size: 80,
-                        color: Color(0xFF1DA1F2), // Twitter-like blue
+                      Image.asset(
+                        'assets/images/Synapse Music Logo.png',
+                        width: 260,
+                        height: 260,
+                        fit: BoxFit.contain,
                       ),
-                      SizedBox(height: 16),
-                      Text(
-                        "Friendify",
+                      const SizedBox(height: 1),
+                      const Text(
+                        "Synapse Music",
                         style: TextStyle(
                           fontSize: 32,
-                          fontWeight: FontWeight.w300,
-                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFFC9D1D9),
+                          letterSpacing: 1.2,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black26,
+                              blurRadius: 4,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 40),
-
-                  // Login Card
                   Card(
-                    color: const Color(0xFF192734), // Dark card color
-                    elevation: 8,
+                    color: const Color(0xFF161B22),
+                    elevation: 6,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(14),
+                      side: const BorderSide(color: Color(0xFF30363D), width: 1),
                     ),
                     child: Padding(
                       padding: const EdgeInsets.all(24.0),
@@ -179,65 +196,64 @@ class _LoginPageState extends State<LoginPage> {
                             const Text(
                               "Sign In",
                               style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.w300,
-                                color: Colors.white,
+                                fontSize: 22,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFFC9D1D9),
                               ),
                             ),
                             const SizedBox(height: 24),
-
-                            // Email Field
                             TextFormField(
                               controller: _emailController,
                               keyboardType: TextInputType.emailAddress,
-                              style: const TextStyle(color: Colors.white),
+                              style: const TextStyle(color: Color(0xFFC9D1D9)),
                               validator: (value) {
                                 if (value == null || value.isEmpty) return 'Please enter your email';
-                                if (!RegExp(r'^[\w-]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {                                  return 'Please enter a valid email';
+                                if (!RegExp(r'^[\w-]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                                  return 'Please enter a valid email';
                                 }
                                 return null;
                               },
                               decoration: InputDecoration(
-                                prefixIcon: const Icon(Icons.email_outlined, color: Colors.grey),
+                                prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFF8B949E)),
                                 labelText: "Email",
-                                labelStyle: const TextStyle(color: Colors.grey),
+                                labelStyle: const TextStyle(color: Color(0xFF8B949E)),
+                                filled: true,
+                                fillColor: Color(0xFF0D1117),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(8),
-                                  borderSide: const BorderSide(color: Colors.grey),
+                                  borderSide: const BorderSide(color: Color(0xFF30363D)),
                                 ),
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(8),
-                                  borderSide: const BorderSide(color: Colors.grey),
+                                  borderSide: const BorderSide(color: Color(0xFF30363D)),
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(8),
-                                  borderSide: const BorderSide(color: Color(0xFF1DA1F2)),
+                                  borderSide: const BorderSide(color: Color(0xFF238636)),
                                 ),
                                 contentPadding: const EdgeInsets.symmetric(
                                     vertical: 12, horizontal: 16),
-                                errorStyle: const TextStyle(color: Colors.redAccent),
+                                errorStyle: const TextStyle(color: Color(0xFFF85149)),
                               ),
                             ),
                             const SizedBox(height: 16),
-
-                            // Password Field
                             TextFormField(
                               controller: _passwordController,
                               obscureText: _obscurePassword,
-                              style: const TextStyle(color: Colors.white),
+                              style: const TextStyle(color: Color(0xFFC9D1D9)),
                               validator: (value) {
                                 if (value == null || value.isEmpty) return 'Please enter your password';
                                 if (value.length < 6) return 'Password must be at least 6 characters';
                                 return null;
                               },
                               decoration: InputDecoration(
-                                prefixIcon: const Icon(Icons.lock_outlined, color: Colors.grey),
+                                prefixIcon: const Icon(Icons.lock_outlined, color: Color(0xFF8B949E)),
                                 suffixIcon: IconButton(
                                   icon: Icon(
                                     _obscurePassword
                                         ? Icons.visibility_off_outlined
                                         : Icons.visibility_outlined,
-                                    color: Colors.grey,
+                                    color: const Color(0xFF8B949E),
                                   ),
                                   onPressed: () {
                                     setState(() {
@@ -246,39 +262,39 @@ class _LoginPageState extends State<LoginPage> {
                                   },
                                 ),
                                 labelText: "Password",
-                                labelStyle: const TextStyle(color: Colors.grey),
+                                labelStyle: const TextStyle(color: Color(0xFF8B949E)),
+                                filled: true,
+                                fillColor: Color(0xFF0D1117),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(8),
-                                  borderSide: const BorderSide(color: Colors.grey),
+                                  borderSide: const BorderSide(color: Color(0xFF30363D)),
                                 ),
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(8),
-                                  borderSide: const BorderSide(color: Colors.grey),
+                                  borderSide: const BorderSide(color: Color(0xFF30363D)),
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(8),
-                                  borderSide: const BorderSide(color: Color(0xFF1DA1F2)),
+                                  borderSide: const BorderSide(color: Color(0xFF238636)),
                                 ),
                                 contentPadding: const EdgeInsets.symmetric(
                                     vertical: 12, horizontal: 16),
-                                errorStyle: const TextStyle(color: Colors.redAccent),
+                                errorStyle: const TextStyle(color: Color(0xFFF85149)),
                               ),
                             ),
                             const SizedBox(height: 24),
-
-
-                            // Login Button
                             SizedBox(
                               width: double.infinity,
-                              height: 50,
+                              height: 48,
                               child: ElevatedButton(
                                 onPressed: _isLoading ? null : _signInWithEmailAndPassword,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF1DA1F2), // Twitter-like blue
+                                  backgroundColor: const Color(0xFF238636),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   elevation: 0,
+                                  foregroundColor: Colors.white,
                                 ),
                                 child: _isLoading
                                     ? const SizedBox(
@@ -294,6 +310,8 @@ class _LoginPageState extends State<LoginPage> {
                                   style: TextStyle(
                                     fontSize: 16,
                                     color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 1.1,
                                   ),
                                 ),
                               ),
@@ -306,8 +324,9 @@ class _LoginPageState extends State<LoginPage> {
                               child: const Text(
                                 "Don't have an account? Register",
                                 style: TextStyle(
-                                  color: Color(0xFF1DA1F2),
+                                  color: Color(0xFFC9D1D9), // match "Sign In" color
                                   fontSize: 14,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
                             ),
