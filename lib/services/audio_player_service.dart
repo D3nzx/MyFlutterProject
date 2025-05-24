@@ -12,12 +12,12 @@ class AudioPlayerService {
   List<Map<String, dynamic>> _songs = [];
   final ValueNotifier<int?> currentIndexNotifier = ValueNotifier<int?>(null);
 
-  // 0: Off, 1: Loop Song, 2: Loop All, 3: Shuffle All
+
   final ValueNotifier<int> playModeNotifier = ValueNotifier<int>(0);
 
   ConcatenatingAudioSource? _playlistSource;
 
-  // Shuffle order and position
+
   List<int> _shuffleOrder = [];
   int _shufflePosition = 0;
 
@@ -42,9 +42,9 @@ class AudioPlayerService {
         _cancelShuffleAutoNext();
         break;
       case 3: // Shuffle All
-        await player.setLoopMode(LoopMode.off); // We'll handle shuffle manually
+        await player.setLoopMode(LoopMode.off);
         await player.setShuffleModeEnabled(false);
-        // Only generate shuffle order if not already set or songs changed
+
         if (_shuffleOrder.isEmpty || _shuffleOrder.length != _songs.length) {
           _generateShuffleOrder(currentIndex: player.currentIndex ?? 0);
         }
@@ -76,11 +76,11 @@ class AudioPlayerService {
     }
     currentIndexNotifier.value = index;
     if (playMode == 3) {
-      // If shuffle order doesn't exist or doesn't contain this index, generate a new one
+
       if (_shuffleOrder.isEmpty || !_shuffleOrder.contains(index) || _shuffleOrder.length != _songs.length) {
         _generateShuffleOrder(currentIndex: index);
       } else {
-        // Set shuffle position to the index in the shuffle order
+
         _shufflePosition = _shuffleOrder.indexOf(index);
       }
     }

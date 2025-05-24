@@ -34,5 +34,5 @@ flutter_icons:
   android: true
   ios: false
   image_path: "assets/images/Synapse Music Logo.png"
-  adaptive_icon_background: "#0D1117"  # Transparent background
+  adaptive_icon_background: "#0D1117"
   adaptive_icon_foreground: "assets/images/Synapse Music Logo.png"

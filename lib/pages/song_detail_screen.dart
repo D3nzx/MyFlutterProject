@@ -123,181 +123,210 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
         ),
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: [
-              Expanded(
-                flex: 3,
-                child: Center(
-                  child: AspectRatio(
-                    aspectRatio: 1,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: CachedNetworkImage(
-                        imageUrl: imageUrl,
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) => Container(
-                          color: Colors.grey[800],
-                          child: const Center(
-                            child: Icon(Icons.music_note, color: Colors.white70, size: 50),
-                          ),
+        child: OrientationBuilder(
+          builder: (context, orientation) {
+            final isLandscape = orientation == Orientation.landscape;
+            final albumArt = Expanded(
+              flex: 3,
+              child: Center(
+                child: AspectRatio(
+                  aspectRatio: 1,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: CachedNetworkImage(
+                      imageUrl: imageUrl,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => Container(
+                        color: Colors.grey[800],
+                        child: const Center(
+                          child: Icon(Icons.music_note, color: Colors.white70, size: 50),
                         ),
-                        errorWidget: (context, url, error) => Container(
-                          color: Colors.grey[800],
-                          child: const Center(
-                            child: Icon(Icons.error, color: Colors.white70, size: 50),
-                          ),
+                      ),
+                      errorWidget: (context, url, error) => Container(
+                        color: Colors.grey[800],
+                        child: const Center(
+                          child: Icon(Icons.error, color: Colors.white70, size: 50),
                         ),
                       ),
                     ),
                   ),
                 ),
               ),
-              const SizedBox(height: 32),
-              Expanded(
-                flex: 1,
+            );
+
+            final songInfoAndControls = Expanded(
+              flex: 4,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
                 child: Column(
+                  mainAxisAlignment: isLandscape ? MainAxisAlignment.center : MainAxisAlignment.start,
                   children: [
-                    Text(
-                      currentSong['title'] ?? 'Unknown Title',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
+                    // Song title and artist
+                    Column(
+                      children: [
+                        Text(
+                          currentSong['title'] ?? 'Unknown Title',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          currentSong['artist'] ?? 'Unknown Artist',
+                          style: TextStyle(
+                            color: Colors.grey[400],
+                            fontSize: 18,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    // Progress bar
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                      child: ProgressBar(
+                        progress: _position ?? Duration.zero,
+                        total: _duration ?? Duration.zero,
+                        onSeek: (duration) async {
+                          final audioService = AudioPlayerService();
+                          final isShuffle = audioService.playModeNotifier.value == 3;
+                          final total = _duration ?? Duration.zero;
+                          if (isShuffle && total.inMilliseconds > 0 && duration.inMilliseconds >= total.inMilliseconds - 500) {
+                            await audioService.playNext();
+                          } else {
+                            _audioPlayer.seek(duration);
+                          }
+                        },
+                        progressBarColor: Colors.white,
+                        baseBarColor: Colors.grey[600]!,
+                        bufferedBarColor: Colors.grey[800]!,
+                        thumbColor: Colors.white,
+                        timeLabelTextStyle: const TextStyle(color: Colors.white),
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 24),
+                    // Play mode button
+                    ValueListenableBuilder<int>(
+                      valueListenable: AudioPlayerService().playModeNotifier,
+                      builder: (context, playMode, _) {
+                        IconData icon;
+                        Color color = Colors.white;
+                        String tooltip;
+                        switch (playMode) {
+                          case 1:
+                            icon = Icons.repeat_one;
+                            color = Colors.blueAccent;
+                            tooltip = 'Repeat One: Repeat current song endlessly';
+                            break;
+                          case 2:
+                            icon = Icons.repeat;
+                            color = Colors.blueAccent;
+                            tooltip = 'Repeat All: Repeat playlist from start after last song';
+                            break;
+                          case 3:
+                            icon = Icons.shuffle;
+                            color = Colors.blueAccent;
+                            tooltip = 'Shuffle All: Play all songs in random order, repeat all';
+                            break;
+                          default:
+                            icon = Icons.repeat;
+                            color = Colors.white;
+                            tooltip = 'Off: Play songs in order, stop after last song';
+                        }
+                        return IconButton(
+                          icon: Icon(icon, color: color),
+                          tooltip: tooltip,
+                          onPressed: () {
+                            int nextMode = (playMode + 1) % 4;
+                            AudioPlayerService().setPlayMode(nextMode);
+                          },
+                        );
+                      },
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      currentSong['artist'] ?? 'Unknown Artist',
-                      style: TextStyle(
-                        color: Colors.grey[400],
-                        fontSize: 18,
+                    // Playback controls
+                    Expanded(
+                      child: StreamBuilder<PlayerState>(
+                        stream: _audioPlayer.playerStateStream,
+                        builder: (context, snapshot) {
+                          return Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.skip_previous, size: 40),
+                                color: Colors.white,
+                                onPressed: _isLoading ? null : _playPreviousSong,
+                              ),
+                              IconButton(
+                                icon: _isLoading || _isBuffering
+                                    ? const SizedBox(
+                                        width: 40,
+                                        height: 40,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 3,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : Icon(
+                                        _isPlaying
+                                            ? Icons.pause_circle_filled
+                                            : Icons.play_circle_filled,
+                                        size: 60,
+                                      ),
+                                color: Colors.white,
+                                onPressed: (_isLoading || _isBuffering)
+                                    ? null
+                                    : () async {
+                                        if (_isPlaying) {
+                                          await _audioPlayer.pause();
+                                        } else {
+                                          await _audioPlayer.play();
+                                        }
+                                      },
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.skip_next, size: 40),
+                                color: Colors.white,
+                                onPressed: _isLoading ? null : _playNextSong,
+                              ),
+                            ],
+                          );
+                        },
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: ProgressBar(
-                  progress: _position ?? Duration.zero,
-                  total: _duration ?? Duration.zero,
-                  onSeek: (duration) async {
-                    final audioService = AudioPlayerService();
-                    final isShuffle = audioService.playModeNotifier.value == 3;
-                    final total = _duration ?? Duration.zero;
-                    if (isShuffle && total.inMilliseconds > 0 && duration.inMilliseconds >= total.inMilliseconds - 500) {
-                      await audioService.playNext();
-                    } else {
-                      _audioPlayer.seek(duration);
-                    }
-                  },
-                  progressBarColor: Colors.white,
-                  baseBarColor: Colors.grey[600]!,
-                  bufferedBarColor: Colors.grey[800]!,
-                  thumbColor: Colors.white,
-                  timeLabelTextStyle: const TextStyle(color: Colors.white),
+            );
+
+            if (isLandscape) {
+              return Row(
+                children: [
+                  Flexible(flex: 4, child: albumArt),
+                  Flexible(flex: 6, child: songInfoAndControls),
+                ],
+              );
+            } else {
+              return Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    albumArt,
+                    const SizedBox(height: 32),
+                    songInfoAndControls,
+                  ],
                 ),
-              ),
-              const SizedBox(height: 32),
-              ValueListenableBuilder<int>(
-                valueListenable: AudioPlayerService().playModeNotifier,
-                builder: (context, playMode, _) {
-                  IconData icon;
-                  Color color = Colors.white;
-                  String tooltip;
-                  switch (playMode) {
-                    case 1:
-                      icon = Icons.repeat_one;
-                      color = Colors.blueAccent;
-                      tooltip = 'Repeat One: Repeat current song endlessly';
-                      break;
-                    case 2:
-                      icon = Icons.repeat;
-                      color = Colors.blueAccent;
-                      tooltip = 'Repeat All: Repeat playlist from start after last song';
-                      break;
-                    case 3:
-                      icon = Icons.shuffle;
-                      color = Colors.blueAccent;
-                      tooltip = 'Shuffle All: Play all songs in random order, repeat all';
-                      break;
-                    default:
-                      icon = Icons.repeat;
-                      color = Colors.white;
-                      tooltip = 'Off: Play songs in order, stop after last song';
-                  }
-                  return IconButton(
-                    icon: Icon(icon, color: color),
-                    tooltip: tooltip,
-                    onPressed: () {
-                      int nextMode = (playMode + 1) % 4;
-                      AudioPlayerService().setPlayMode(nextMode);
-                    },
-                  );
-                },
-              ),
-              const SizedBox(height: 8),
-              Expanded(
-                flex: 1,
-                child: StreamBuilder<PlayerState>(
-                  stream: _audioPlayer.playerStateStream,
-                  builder: (context, snapshot) {
-                    return Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.skip_previous, size: 40),
-                          color: Colors.white,
-                          onPressed: _isLoading ? null : _playPreviousSong,
-                        ),
-                        IconButton(
-                          icon: _isLoading || _isBuffering
-                              ? const SizedBox(
-                                  width: 40,
-                                  height: 40,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 3,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : Icon(
-                                  _isPlaying
-                                      ? Icons.pause_circle_filled
-                                      : Icons.play_circle_filled,
-                                  size: 60,
-                                ),
-                          color: Colors.white,
-                          onPressed: (_isLoading || _isBuffering)
-                              ? null
-                              : () async {
-                                  if (_isPlaying) {
-                                    await _audioPlayer.pause();
-                                  } else {
-                                    await _audioPlayer.play();
-                                  }
-                                },
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.skip_next, size: 40),
-                          color: Colors.white,
-                          onPressed: _isLoading ? null : _playNextSong,
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
+              );
+            }
+          },
         ),
       ),
     );
   }
 }
-
